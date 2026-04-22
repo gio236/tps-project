@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HE-DY — Frequency Hopping & Hidden Genius</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ════════════════════════════════
+   BASE — B&W CINEMATIC PALETTE
+════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; cursor: none !important; }
+:root {
+  --gold:   #d4cbb8;   /* aged parchment / warm film highlight */
+  --gold2:  #888888;   /* mid gray */
+  --bg:     #080808;
+  --bg2:    #0f0f0f;
+  --bg3:    #181818;
+  --text:   #e8e4dc;
+  --muted:  #777777;
+  --dim:    #444444;
+}
+html { scroll-behavior: auto; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+::selection { background: var(--gold); color: var(--bg); }
+
+/* ─ Cursor (desktop only) ─ */
+#cur, #cur-r {
+  position: fixed; top: 0; left: 0;
+  border-radius: 50%; pointer-events: none; z-index: 99999;
+  transform: translate(-50%,-50%);
+}
+#cur   { width: 8px;  height: 8px;  background: var(--gold); transition: transform .12s; }
+#cur-r { width: 32px; height: 32px; border: 1px solid rgba(212,203,184,.45); transition: width .35s, height .35s, border-color .35s; }
+body.link-hover #cur-r { width: 54px; height: 54px; border-color: rgba(212,203,184,.8); }
+@media(pointer:coarse){
+  #cur, #cur-r { display: none; }
+  *, *::before, *::after { cursor: auto !important; }
+}
+
+/* ─ Film grain ─ */
+.grain {
+  position: fixed; inset: 0; pointer-events: none; z-index: 9000; opacity: .055;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ─ Scroll progress bar ─ */
+#progress-bar {
+  position: fixed; top: 0; left: 0; height: 2px;
+  background: linear-gradient(90deg, var(--gold), var(--gold2));
+  width: 0%; z-index: 10000; transition: width .05s linear;
+}
+
+/* ═══════════════════════════════
+   NAV
+═══════════════════════════════ */
+nav {
+  position: fixed; top: 0; width: 100%; z-index: 1000;
+  padding: 1.4rem 3rem;
+  display: flex; justify-content: space-between; align-items: center;
+  transition: background .4s, padding .4s;
+}
+nav.scrolled {
+  background: rgba(8,8,8,.96);
+  backdrop-filter: blur(16px);
+  padding: 1rem 3rem;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.nav-logo {
+  font-family: 'Playfair Display', serif; font-style: italic; font-weight: 900;
+  font-size: 1.6rem; color: var(--gold); letter-spacing: -.02em;
+}
+.nav-links { display: flex; gap: 2.5rem; }
+.nav-links a {
+  font-family: 'DM Mono', monospace; font-size: .62rem;
+  letter-spacing: .35em; text-transform: uppercase; color: var(--muted);
+  text-decoration: none; transition: color .3s;
+}
+.nav-links a:hover { color: var(--gold); }
+.nav-signal {
+  font-family: 'DM Mono', monospace; font-size: .6rem;
+  letter-spacing: .25em; text-transform: uppercase; color: var(--gold);
+  display: flex; align-items: center; gap: .5rem;
+}
+.pulse-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--gold); animation: pulse 2s infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+/* ─ Hamburger (mobile) ─ */
+.nav-hamburger {
+  display: none; flex-direction: column; justify-content: center;
+  gap: 5px; background: none; border: none; padding: .4rem;
+  z-index: 1002; cursor: pointer !important;
+}
+.nav-hamburger span {
+  display: block; width: 24px; height: 1px;
+  background: var(--gold); transition: all .35s cubic-bezier(.22,1,.36,1);
+  transform-origin: center;
+}
+.nav-hamburger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.nav-hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.nav-hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* ─ Mobile menu overlay ─ */
+.nav-mobile-menu {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(8,8,8,.97);
+  backdrop-filter: blur(24px);
+  z-index: 1001;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+  transform: translateY(-100%);
+  transition: transform .5s cubic-bezier(.22,1,.36,1);
+}
+.nav-mobile-menu.open { transform: none; }
+.nav-mobile-menu a {
+  font-family: 'Playfair Display', serif; font-style: italic; font-weight: 900;
+  font-size: clamp(2rem, 8vw, 3.5rem); color: var(--muted);
+  text-decoration: none; padding: .8rem 0;
+  letter-spacing: .02em; text-transform: uppercase;
+  transition: color .3s;
+  display: block; text-align: center; width: 100%;
+}
+.nav-mobile-menu a:hover { color: var(--gold); }
+.nav-mobile-signal {
+  margin-top: 3rem;
+  font-family: 'DM Mono', monospace; font-size: .6rem;
+  letter-spacing: .3em; text-transform: uppercase; color: var(--dim);
+  display: flex; align-items: center; gap: .6rem;
+}
+
+/* ─ Chapter label ─ */
+.ch-label {
+  font-family: 'DM Mono', monospace; font-size: .6rem;
+  letter-spacing: .45em; text-transform: uppercase; color: rgba(212,203,184,.4);
+  writing-mode: vertical-lr;
+  position: absolute; left: 2rem; top: 50%;
+  transform: translateY(-50%) rotate(180deg);
+  pointer-events: none;
+}
+
+/* ════════════════════════════════
+   SECTION 1 — PINNED HERO
+════════════════════════════════ */
+#s-hero { height: 300vh; position: relative; }
+#s-hero-sticky {
+  position: sticky; top: 0; height: 100vh; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.hero-bg {
+  position: absolute; inset: 0;
+  background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAc_mzyd-3aLBwpDYIq0Xk05VWj_NCWPJ-k_KNJYF6kg9cJVSp2QPfFdjirToCvu991w84gKM8k-yHxVWfSMkswzu6L7rmq9nBPTAeDIEV2nqGHQG8UWJZ1XZ241YT31RcyKa77Af3FmNkwIwUMG3QxPN7NDvCIEk0oiw4l5JlYTNX_DoP34sIChEYnyeiUAcGLBkV2llTtd-9Jtm4JyPPToNAk9Nr52L-n66gU0GM8gDO0wBFuN_dbPmnQKNbQKDmD7eiJgkMZpT4');
+  background-size: cover; background-position: center top;
+  filter: grayscale(1) brightness(.5) contrast(1.1);
+  transition: filter 1.2s ease;
+  will-change: transform;
+}
+.hero-bg.color { filter: grayscale(1) brightness(.6) contrast(1.05); }
+
+.scene {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .8s ease;
+  pointer-events: none;
+}
+.scene.active { opacity: 1; pointer-events: auto; }
+.scene-overlay { position: absolute; inset: 0; }
+
+/* Scene 0 */
+#sc0 .scene-overlay { background: linear-gradient(to bottom, rgba(8,8,8,.15) 0%, rgba(8,8,8,.5) 60%, var(--bg) 100%); }
+.hero-eyebrow {
+  font-family: 'DM Mono', monospace; font-size: .68rem;
+  letter-spacing: .5em; text-transform: uppercase; color: var(--gold);
+  display: block; margin-bottom: 1.5rem;
+  opacity: 0; transform: translateY(16px); transition: all .9s .2s;
+}
+.scene.active .hero-eyebrow { opacity: 1; transform: none; }
+.hero-title {
+  font-family: 'Playfair Display', serif; font-style: italic; font-weight: 900;
+  font-size: clamp(5rem, 18vw, 14rem);
+  line-height: .82; color: var(--gold); text-transform: uppercase;
+  opacity: 0; transform: translateY(30px); transition: all 1s .4s;
+  text-shadow: 0 0 120px rgba(212,203,184,.2);
+}
+.scene.active .hero-title { opacity: 1; transform: none; }
+.hero-sub {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: clamp(.9rem, 3vw, 2rem); color: rgba(136,136,136,.9);
+  opacity: 0; transition: all .9s .7s; padding: 0 1rem;
+}
+.scene.active .hero-sub { opacity: 1; }
+.scroll-cue {
+  position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: .6rem;
+  font-family: 'DM Mono', monospace; font-size: .55rem; letter-spacing: .35em;
+  text-transform: uppercase; color: rgba(212,203,184,.4);
+}
+.scroll-arrow {
+  width: 1px; height: 48px;
+  background: linear-gradient(to bottom, var(--gold), transparent);
+  animation: scrollArrow 2s ease-in-out infinite;
+}
+@keyframes scrollArrow { 0%,100%{transform:scaleY(1);opacity:.5} 50%{transform:scaleY(.5);opacity:1} }
+
+/* Scene 1 */
+#sc1 .scene-overlay { background: linear-gradient(135deg, rgba(8,8,8,.9) 0%, rgba(8,8,8,.3) 100%); }
+.sc1-content {
+  position: relative; z-index: 2; max-width: 1100px; width: 100%;
+  padding: 0 4rem; display: grid; grid-template-columns: 1fr 1fr;
+  gap: 4rem; align-items: center;
+}
+.scene-chapter {
+  font-family: 'DM Mono', monospace; font-size: .6rem;
+  letter-spacing: .5em; text-transform: uppercase; color: var(--gold);
+  margin-bottom: 1rem; display: block;
+}
+.scene-heading {
+  font-family: 'Playfair Display', serif; font-weight: 900; font-style: italic;
+  font-size: clamp(2rem, 6vw, 5rem); line-height: 1; text-transform: uppercase; margin-bottom: 1.5rem;
+}
+.scene-body { font-size: 1rem; color: var(--muted); line-height: 1.75; max-width: 38ch; }
+.scene-stat { margin-top: 2rem; border-left: 2px solid rgba(212,203,184,.25); padding-left: 1.2rem; }
+.scene-stat strong {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 2.5rem; color: var(--gold); display: block;
+}
+.scene-stat span {
+  font-family: 'DM Mono', monospace; font-size: .65rem;
+  letter-spacing: .3em; text-transform: uppercase; color: var(--dim);
+}
+
+/* Scene 2 */
+#sc2 .scene-overlay { background: linear-gradient(to right, rgba(8,8,8,.97) 0%, rgba(8,8,8,.4) 60%, rgba(8,8,8,.1) 100%); }
+.blueprint-grid {
+  position: absolute; inset: 0; opacity: .03;
+  background-image:
+    linear-gradient(var(--gold) 1px, transparent 1px),
+    linear-gradient(90deg, var(--gold) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+.sc2-content { position: relative; z-index: 2; max-width: 1100px; width: 100%; padding: 0 4rem; }
+.sc2-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+.patent-box {
+  border: 1px solid rgba(212,203,184,.25); padding: 2rem;
+  position: relative; margin-top: 2rem;
+}
+.patent-box::before, .patent-box::after {
+  content: ''; position: absolute; width: 18px; height: 18px;
+  border-color: var(--gold); border-style: solid;
+}
+.patent-box::before { top: -3px; left: -3px; border-width: 2px 0 0 2px; }
+.patent-box::after  { bottom: -3px; right: -3px; border-width: 0 2px 2px 0; }
+.patent-num { font-family: 'Playfair Display', serif; font-style: italic; font-size: 3rem; font-weight: 900; color: var(--gold); line-height: 1; }
+.patent-label { font-family: 'DM Mono', monospace; font-size: .6rem; letter-spacing: .35em; text-transform: uppercase; color: var(--dim); margin-top: .3rem; }
+
+/* Scan line */
+.scan-bar {
+  position: absolute; left: 0; width: 100%; height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(212,203,184,.15), transparent);
+  animation: scan 10s linear infinite; pointer-events: none; z-index: 3;
+}
+@keyframes scan { from{top:-2px} to{top:100%} }
+
+/* Wave canvas */
+#wave-canvas { position: absolute; bottom: 0; left: 0; width: 100%; height: 140px; z-index: 4; opacity: .35; pointer-events: none; }
+
+/* Hero steps */
+.hero-steps {
+  position: absolute; right: 2.5rem; top: 50%; transform: translateY(-50%); z-index: 10;
+  display: flex; flex-direction: column; gap: .8rem;
+}
+.h-step { width: 3px; height: 28px; background: rgba(212,203,184,.15); border-radius: 2px; transition: background .4s, height .4s; }
+.h-step.active { background: var(--gold); height: 44px; }
+
+/* ════════════════════════════════
+   TICKER
+════════════════════════════════ */
+.ticker-wrap { overflow: hidden; background: var(--gold); padding: .7rem 0; }
+.ticker-inner { display: flex; animation: tickerScroll 35s linear infinite; white-space: nowrap; }
+.ticker-inner span {
+  font-family: 'DM Mono', monospace; font-size: .7rem; font-weight: 500;
+  letter-spacing: .3em; text-transform: uppercase; color: var(--bg); padding-right: 5rem;
+}
+@keyframes tickerScroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+/* ════════════════════════════════
+   SECTION 2 — WORD REVEAL QUOTE
+════════════════════════════════ */
+#s-quote { height: 250vh; position: relative; }
+#s-quote-sticky {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+}
+.quote-inner { max-width: 900px; padding: 0 3rem; text-align: center; }
+.quote-eyebrow {
+  font-family: 'DM Mono', monospace; font-size: .6rem;
+  letter-spacing: .5em; text-transform: uppercase; color: rgba(212,203,184,.35);
+  margin-bottom: 3rem; display: block;
+}
+.quote-text {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: clamp(1.4rem, 4vw, 3.2rem); line-height: 1.35;
+}
+.q-word { display: inline; color: rgba(232,228,220,.1); transition: color .3s; word-break: break-word; }
+.q-word.lit { color: var(--text); }
+.q-word.active { color: var(--gold); }
+.quote-attr {
+  font-family: 'DM Mono', monospace; font-size: .65rem;
+  letter-spacing: .4em; text-transform: uppercase; color: var(--gold);
+  margin-top: 2.5rem; display: block; opacity: 0; transition: opacity .6s;
+}
+.quote-attr.show { opacity: 1; }
+.quote-rule { width: 0; height: 1px; background: rgba(212,203,184,.25); margin: 0 auto 2rem; transition: width 1s ease; }
+.quote-rule.grow { width: 120px; }
+
+/* ════════════════════════════════
+   SECTION 3 — HORIZONTAL TIMELINE
+════════════════════════════════ */
+#s-timeline { height: 500vh; position: relative; }
+#s-timeline-sticky {
+  position: sticky; top: 0; height: 100vh; overflow: hidden;
+  display: flex; align-items: center;
+}
+.tl-header {
+  position: absolute; top: 0; left: 0; right: 0;
+  padding: 2rem 4rem;
+  display: flex; justify-content: space-between; align-items: center;
+  z-index: 5; background: linear-gradient(to bottom, var(--bg) 0%, transparent 100%);
+}
+.tl-title { font-family: 'Playfair Display', serif; font-weight: 900; font-style: italic; font-size: 1.1rem; text-transform: uppercase; letter-spacing: .05em; color: var(--gold); }
+.tl-counter { font-family: 'DM Mono', monospace; font-size: .6rem; letter-spacing: .3em; text-transform: uppercase; color: var(--dim); }
+.tl-progress-track { position: absolute; bottom: 2rem; left: 4rem; right: 4rem; height: 1px; background: rgba(212,203,184,.12); }
+.tl-progress-fill { height: 100%; background: var(--gold); width: 0%; transition: width .05s; }
+.tl-cards {
+  display: flex; align-items: center;
+  gap: 5rem; padding: 0 6rem;
+  will-change: transform; flex-shrink: 0;
+}
+.tl-card {
+  flex-shrink: 0; width: min(420px, 85vw);
+  opacity: 0; transform: scale(.9);
+  transition: opacity .6s, transform .6s;
+}
+.tl-card.visible { opacity: 1; transform: scale(1); }
+.tl-year {
+  font-family: 'Playfair Display', serif; font-style: italic; font-weight: 900;
+  font-size: 5rem; line-height: 1; color: rgba(212,203,184,.1);
+  margin-bottom: -.5rem; transition: color .6s;
+}
+.tl-card.visible .tl-year { color: rgba(212,203,184,.35); }
+.tl-card-inner { border: 1px solid rgba(255,255,255,.06); background: var(--bg2); padding: 2rem; position: relative; }
+.tl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); position: absolute; top: -4px; left: 2rem; }
+.tl-cat { font-family: 'DM Mono', monospace; font-size: .58rem; letter-spacing: .45em; text-transform: uppercase; color: var(--gold); margin-bottom: .8rem; display: block; }
+.tl-card-title { font-family: 'Playfair Display', serif; font-weight: 700; font-style: italic; font-size: 1.6rem; margin-bottom: .8rem; }
+.tl-card-body { font-size: .88rem; color: var(--muted); line-height: 1.7; }
+.tl-tag {
+  display: inline-block; margin-top: 1rem; padding: .25rem .8rem;
+  border: 1px solid rgba(212,203,184,.2); font-family: 'DM Mono', monospace;
+  font-size: .55rem; letter-spacing: .3em; text-transform: uppercase; color: var(--gold);
+}
+
+/* ════════════════════════════════
+   SECTION 4 — PINNED PATENT REVEAL
+════════════════════════════════ */
+#s-patent { height: 300vh; position: relative; background: var(--bg2); }
+#s-patent-sticky { position: sticky; top: 0; height: 100vh; display: flex; align-items: center; overflow: hidden; }
+.patent-bg-grid {
+  position: absolute; inset: 0; opacity: .03;
+  background-image: linear-gradient(var(--gold) 1px, transparent 1px), linear-gradient(90deg, var(--gold) 1px, transparent 1px);
+  background-size: 55px 55px;
+}
+.patent-inner { position: relative; z-index: 2; max-width: 1100px; width: 100%; margin: 0 auto; padding: 0 4rem; }
+.patent-left { max-width: 480px; }
+.patent-step-eyebrow {
+  font-family: 'DM Mono', monospace; font-size: .6rem;
+  letter-spacing: .5em; text-transform: uppercase; color: var(--gold);
+  margin-bottom: 1.5rem; display: block;
+}
+.patent-big-title {
+  font-family: 'Playfair Display', serif; font-weight: 900; font-style: italic;
+  font-size: clamp(2rem, 5vw, 4.5rem); line-height: 1; text-transform: uppercase; margin-bottom: 2rem;
+}
+.patent-specs { display: flex; flex-direction: column; gap: 1.2rem; }
+.p-spec {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+  border-bottom: 1px solid rgba(255,255,255,.04); padding-bottom: 1.2rem;
+  opacity: 0; transform: translateX(-20px);
+  transition: opacity .6s, transform .6s;
+}
+.p-spec.show { opacity: 1; transform: none; }
+.p-spec-label { font-family: 'DM Mono', monospace; font-size: .6rem; letter-spacing: .3em; text-transform: uppercase; color: var(--dim); }
+.p-spec-val { font-family: 'DM Mono', monospace; font-size: .85rem; color: var(--gold); font-weight: 500; }
+.patent-right { position: absolute; right: 4rem; top: 50%; transform: translateY(-50%); width: 380px; }
+.freq-label { font-family: 'DM Mono', monospace; font-size: .55rem; letter-spacing: .35em; text-transform: uppercase; color: var(--dim); margin-bottom: 1rem; }
+#freq-canvas { width: 100%; height: 120px; border-bottom: 1px solid rgba(212,203,184,.12); }
+.freq-note { font-family: 'DM Mono', monospace; font-size: .55rem; color: var(--dim); margin-top: .6rem; letter-spacing: .15em; }
+.big-patent-num {
+  font-family: 'Playfair Display', serif; font-style: italic; font-weight: 900;
+  font-size: 4.5rem; color: var(--gold); line-height: 1; margin-top: 2rem;
+  opacity: 0; transform: translateY(20px); transition: opacity .8s, transform .8s;
+}
+.big-patent-num.show { opacity: 1; transform: none; }
+
+/* ════════════════════════════════
+   SECTION 5 — PARALLAX DUALITY
+════════════════════════════════ */
+#s-duality { position: relative; height: 100vh; overflow: hidden; }
+.duality-bg {
+  position: absolute; inset: 0;
+  background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDK5gX--hd9b-xzE4JInfmOuQXku0YY3i5SaeiIYd9brtLZWznzylI_y3AFqHID1UCmbXLku8nay47wRgd_Acf6Zmg4bepzFxqzp-QlpGQH2kjQlesqX_Nt1lZ7VAAwrGzPrWSD_OUl8i7efoEygdJiQnbU2OTAQxgEvA6fhKx3mmpPAG4zazcTJiLwq2y_16_ED_MCSVPxkbkdKPJvDi7oRHpIrYQ1v6GoFuQrQlhAN_exKwjLBS8pNUVY7nLQUd2Fmy3oibf4npE');
+  background-size: cover; background-position: center;
+  filter: grayscale(1) brightness(.3) contrast(1.15);
+  will-change: transform;
+}
+.duality-split {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(8,8,8,.95) 0%, rgba(8,8,8,.4) 50%, rgba(8,8,8,.1) 100%);
+}
+.duality-content {
+  position: relative; z-index: 2; height: 100%;
+  display: flex; align-items: center;
+  max-width: 700px; padding: 0 6rem;
+}
+.duality-kicker {
+  font-family: 'DM Mono', monospace; font-size: .6rem;
+  letter-spacing: .5em; text-transform: uppercase; color: var(--gold);
+  margin-bottom: 1.5rem; display: block;
+}
+.duality-heading {
+  font-family: 'Playfair Display', serif; font-weight: 900; font-style: italic;
+  font-size: clamp(2.5rem, 7vw, 6rem); line-height: .9; text-transform: uppercase; margin-bottom: 2rem;
+}
+.duality-body { font-size: 1rem; color: var(--muted); line-height: 1.8; max-width: 44ch; }
+.duality-stats { display: flex; gap: 3rem; margin-top: 3rem; flex-wrap: wrap; }
+.d-stat strong { font-family: 'Playfair Display', serif; font-style: italic; font-size: 3rem; color: var(--gold); display: block; line-height: 1; }
+.d-stat span { font-family: 'DM Mono', monospace; font-size: .58rem; letter-spacing: .3em; text-transform: uppercase; color: var(--dim); display: block; margin-top: .3rem; }
+
+/* ════════════════════════════════
+   SECTION 6 — LEGACY COUNTERS
+════════════════════════════════ */
+#s-legacy { padding: 10rem 4rem; background: var(--bg); }
+.legacy-inner { max-width: 1100px; margin: 0 auto; }
+.legacy-eyebrow { font-family: 'DM Mono', monospace; font-size: .6rem; letter-spacing: .5em; text-transform: uppercase; color: var(--gold); text-align: center; display: block; margin-bottom: 1.5rem; }
+.legacy-title { font-family: 'Playfair Display', serif; font-weight: 900; font-style: italic; font-size: clamp(2.5rem, 7vw, 6rem); text-align: center; text-transform: uppercase; line-height: 1; margin-bottom: 6rem; }
+.counters-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+  gap: 2px; background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.07); margin-bottom: 5rem;
+}
+.counter-cell { background: var(--bg); padding: 3rem 2rem; text-align: center; }
+.counter-num { font-family: 'Playfair Display', serif; font-style: italic; font-weight: 900; font-size: 4rem; color: var(--gold); line-height: 1; }
+.counter-suffix { font-family: 'Playfair Display', serif; font-style: italic; font-size: 2.5rem; color: var(--gold); }
+.counter-label { font-family: 'DM Mono', monospace; font-size: .58rem; letter-spacing: .35em; text-transform: uppercase; color: var(--dim); margin-top: .8rem; display: block; }
+.tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; }
+.tech-header { display: flex; justify-content: space-between; margin-bottom: .6rem; }
+.tech-name { font-family: 'DM Mono', monospace; font-size: .65rem; letter-spacing: .2em; text-transform: uppercase; color: var(--text); }
+.tech-pct  { font-family: 'DM Mono', monospace; font-size: .65rem; color: var(--gold); }
+.tech-track { height: 2px; background: rgba(255,255,255,.06); border-radius: 1px; overflow: hidden; }
+.tech-fill { height: 100%; background: var(--gold); border-radius: 1px; width: 0; transition: width 1.6s cubic-bezier(.22,1,.36,1); }
+.tech-fill.alt { background: var(--gold2); }
+
+/* ════════════════════════════════
+   SECTION 7 — VIDEO
+════════════════════════════════ */
+#s-video {
+  padding: 10rem 4rem;
+  background: var(--bg2);
+  position: relative;
+  overflow: hidden;
+}
+/* Subtle grid background */
+#s-video::before {
+  content: '';
+  position: absolute; inset: 0; opacity: .025;
+  background-image:
+    linear-gradient(var(--gold) 1px, transparent 1px),
+    linear-gradient(90deg, var(--gold) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+}
+.video-inner { max-width: 920px; margin: 0 auto; position: relative; z-index: 1; }
+.video-eyebrow {
+  font-family: 'DM Mono', monospace; font-size: .6rem;
+  letter-spacing: .5em; text-transform: uppercase; color: var(--gold);
+  display: block; margin-bottom: 1.5rem; text-align: center;
+}
+.video-title {
+  font-family: 'Playfair Display', serif; font-weight: 900; font-style: italic;
+  font-size: clamp(2.5rem, 6vw, 5rem); text-align: center; text-transform: uppercase;
+  line-height: 1; margin-bottom: 1.5rem;
+}
+.video-desc {
+  font-family: 'DM Sans', sans-serif; font-size: .95rem; color: var(--muted);
+  text-align: center; max-width: 52ch; margin: 0 auto 3.5rem;
+  line-height: 1.75;
+}
+
+/* Film-strip ornament */
+.video-filmstrip {
+  display: flex; justify-content: center; gap: 6px;
+  margin-bottom: 2rem; opacity: .35;
+}
+.video-filmstrip span {
+  display: block; width: 18px; height: 10px;
+  border: 1px solid var(--gold); border-radius: 2px;
+}
+
+/* The video wrapper — aspect-ratio 16:9, responsive */
+.video-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  /* Corner bracket decoration */
+  --brk: 22px;
+  --brk-clr: rgba(212,203,184,.5);
+}
+/* Corner brackets */
+.video-wrap::before,
+.video-wrap::after {
+  content: '';
+  position: absolute;
+  width: var(--brk); height: var(--brk);
+  border-color: var(--brk-clr); border-style: solid;
+  z-index: 10; pointer-events: none;
+  transition: width .4s, height .4s;
+}
+.video-wrap::before { top: -4px; left: -4px; border-width: 2px 0 0 2px; }
+.video-wrap::after  { bottom: -4px; right: -4px; border-width: 0 2px 2px 0; }
+.video-wrap:hover::before,
+.video-wrap:hover::after { --brk: 32px; --brk-clr: rgba(212,203,184,.85); }
+
+/* Extra corner brackets via inner pseudo elements */
+.video-frame {
+  position: absolute; inset: 0; z-index: 9; pointer-events: none;
+}
+.video-frame::before,
+.video-frame::after {
+  content: '';
+  position: absolute;
+  width: var(--brk, 22px); height: var(--brk, 22px);
+  border-color: rgba(212,203,184,.5); border-style: solid;
+}
+.video-frame::before { bottom: -4px; left: -4px; border-width: 0 0 2px 2px; }
+.video-frame::after  { top: -4px; right: -4px; border-width: 2px 2px 0 0; }
+
+/* Scanline overlay */
+.video-scanlines {
+  position: absolute; inset: 0; z-index: 8; pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0,0,0,.08) 2px,
+    rgba(0,0,0,.08) 4px
+  );
+  opacity: .6;
+}
+
+/* Placeholder — shown when no video embedded */
+.video-placeholder {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1.5rem;
+  border: 1px solid rgba(212,203,184,.12);
+}
+.video-play-btn {
+  width: 72px; height: 72px; border-radius: 50%;
+  border: 1px solid rgba(212,203,184,.4);
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(212,203,184,.06);
+  transition: background .3s, border-color .3s, transform .3s;
+}
+.video-play-btn svg { width: 24px; height: 24px; fill: var(--gold); margin-left: 4px; }
+.video-placeholder:hover .video-play-btn {
+  background: rgba(212,203,184,.14);
+  border-color: rgba(212,203,184,.8);
+  transform: scale(1.08);
+}
+.video-placeholder-label {
+  font-family: 'DM Mono', monospace; font-size: .6rem;
+  letter-spacing: .4em; text-transform: uppercase; color: var(--dim);
+  text-align: center; padding: 0 2rem;
+}
+/* 
+  ─────────────────────────────────────────────────
+  HOW TO INSERT YOUR VIDEO:
+  
+  Option A — YouTube:
+  Replace the <div class="video-placeholder">…</div> with:
+  <iframe src="https://www.youtube.com/embed/YOUR_VIDEO_ID"
+          style="position:absolute;inset:0;width:100%;height:100%;border:none;"
+          allow="autoplay;fullscreen" allowfullscreen></iframe>
+  
+  Option B — Video file:
+  Replace the <div class="video-placeholder">…</div> with:
+  <video controls style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+    <source src="your-video.mp4" type="video/mp4">
+  </video>
+  ─────────────────────────────────────────────────
+*/
+
+/* Video caption */
+.video-caption {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 1.5rem; padding-top: 1.2rem;
+  border-top: 1px solid rgba(255,255,255,.05);
+}
+.video-caption-left {
+  font-family: 'DM Mono', monospace; font-size: .58rem;
+  letter-spacing: .3em; text-transform: uppercase; color: var(--dim);
+}
+.video-caption-right {
+  display: flex; align-items: center; gap: .6rem;
+  font-family: 'DM Mono', monospace; font-size: .58rem;
+  letter-spacing: .25em; text-transform: uppercase; color: var(--gold);
+}
+
+/* ════════════════════════════════
+   SECTION 8 — QUOTE FINALE
+════════════════════════════════ */
+#s-final { padding: 10rem 4rem; background: var(--bg); text-align: center; }
+.final-quote {
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: clamp(1.3rem, 3.5vw, 2.5rem); color: var(--text);
+  max-width: 800px; margin: 0 auto 2rem; line-height: 1.4;
+}
+.final-attr  { font-family: 'DM Mono', monospace; font-size: .6rem; letter-spacing: .45em; text-transform: uppercase; color: var(--gold); }
+.final-divider { width: 60px; height: 1px; background: rgba(212,203,184,.2); margin: 3rem auto; }
+
+/* ════════════════════════════════
+   FOOTER
+════════════════════════════════ */
+footer { background: var(--bg); border-top: 1px solid rgba(255,255,255,.05); padding: 4rem; }
+.footer-inner { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 2rem; }
+.footer-logo { font-family: 'Playfair Display', serif; font-style: italic; font-weight: 900; font-size: 1.5rem; color: var(--gold); }
+.footer-copy { font-family: 'DM Mono', monospace; font-size: .58rem; letter-spacing: .25em; text-transform: uppercase; color: var(--dim); margin-top: .3rem; }
+.footer-links { display: flex; gap: 2rem; flex-wrap: wrap; }
+.footer-links a { font-family: 'DM Mono', monospace; font-size: .6rem; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color .3s; }
+.footer-links a:hover { color: var(--gold); }
+.footer-signal { display: flex; align-items: center; gap: .6rem; font-family: 'DM Mono', monospace; font-size: .6rem; letter-spacing: .25em; text-transform: uppercase; color: var(--gold); border: 1px solid rgba(212,203,184,.18); padding: .5rem 1rem; }
+
+/* ─ Reveal ─ */
+.rev { opacity: 0; transform: translateY(32px); transition: opacity .9s cubic-bezier(.22,1,.36,1), transform .9s cubic-bezier(.22,1,.36,1); }
+.rev.in { opacity: 1; transform: none; }
+.rev-d1 { transition-delay: .1s; }
+.rev-d2 { transition-delay: .2s; }
+.rev-d3 { transition-delay: .35s; }
+
+/* ════════════════════════════════
+   MOBILE RESPONSIVE
+════════════════════════════════ */
+@media(max-width:768px) {
+  /* Nav */
+  nav { padding: 1.2rem 1.5rem; }
+  nav.scrolled { padding: .9rem 1.5rem; }
+  .nav-links, .nav-signal { display: none; }
+  .nav-hamburger { display: flex; }
+
+  /* Hero */
+  .hero-steps { display: none; }
+  .ch-label { display: none; }
+  #sc0 > div { padding: 0 1.5rem !important; }
+  .sc1-content {
+    grid-template-columns: 1fr; gap: 1.5rem;
+    padding: 0 1.5rem;
+  }
+  .sc1-content > div:last-child { display: none; }
+  .sc2-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+  .sc2-content { padding: 0 1.5rem; }
+  .scene-body { max-width: 100%; font-size: .95rem; }
+
+  /* Timeline → vertical on mobile */
+  #s-timeline { height: auto; }
+  #s-timeline-sticky {
+    position: relative !important; top: auto !important;
+    height: auto !important; overflow: visible !important;
+    flex-direction: column; align-items: flex-start;
+    padding: 0;
+  }
+  .tl-header { position: relative !important; padding: 3rem 1.5rem 1.5rem; }
+  .tl-cards {
+    flex-direction: column !important;
+    transform: none !important;
+    padding: 1rem 1.5rem 3rem;
+    gap: 1.5rem; width: 100%;
+  }
+  .tl-card {
+    width: 100% !important;
+    opacity: 1 !important; transform: none !important;
+  }
+  .tl-year { font-size: 3.5rem; }
+  .tl-card-inner { padding: 1.5rem; }
+  .tl-progress-track { display: none; }
+
+  /* Patent */
+  .patent-right { display: none; }
+  .patent-inner { padding: 0 1.5rem; }
+  .patent-left { max-width: 100%; }
+
+  /* Duality */
+  .duality-content { padding: 2rem 1.5rem; }
+  #s-duality { height: auto; min-height: 100vh; }
+  .duality-stats { gap: 1.5rem; }
+
+  /* Legacy */
+  #s-legacy { padding: 6rem 1.5rem; }
+  .tech-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+  .counter-cell { padding: 2rem 1rem; }
+
+  /* Video */
+  #s-video { padding: 6rem 1.5rem; }
+  .video-desc { font-size: .9rem; }
+
+  /* Quote */
+  .quote-inner { padding: 0 1.5rem; }
+
+  /* Final */
+  #s-final { padding: 6rem 1.5rem; }
+
+  /* Footer */
+  footer { padding: 3rem 1.5rem; }
+  .footer-inner { flex-direction: column; align-items: flex-start; gap: 1.5rem; }
+  .footer-links { gap: 1.2rem; }
+}
+
+@media(max-width:480px) {
+  nav { padding: 1rem 1.2rem; }
+  .nav-logo { font-size: 1.3rem; }
+  .hero-title { font-size: clamp(4rem, 22vw, 7rem); }
+  .hero-sub { font-size: .85rem; }
+  .scene-heading { font-size: clamp(1.8rem, 7vw, 3rem); }
+  .patent-num { font-size: 2.2rem; }
+  .tl-year { font-size: 3rem; }
+  .duality-heading { font-size: clamp(2.2rem, 9vw, 4rem); }
+  .video-play-btn { width: 60px; height: 60px; }
+  .video-filmstrip span { width: 14px; height: 8px; }
+  .video-caption { flex-direction: column; align-items: flex-start; gap: .6rem; }
+  .counters-grid { grid-template-columns: 1fr 1fr; }
+  .counter-num { font-size: 3rem; }
+}
+</style>
+</head>
+
+<body>
+<!-- Cursor -->
+<div id="cur"></div>
+<div id="cur-r"></div>
+<div class="grain"></div>
+<div id="progress-bar"></div>
+
+<!-- ─ NAV ─ -->
+<nav id="navbar">
+  <div class="nav-logo">HE-DY</div>
+  <div class="nav-links">
+    <a href="#s-hero">Intro</a>
+    <a href="#s-quote">Visione</a>
+    <a href="#s-timeline">Timeline</a>
+    <a href="#s-patent">Brevetto</a>
+    <a href="#s-legacy">Impatto</a>
+    <a href="#s-video">Video</a>
+  </div>
+  <div class="nav-signal"><div class="pulse-dot"></div>Signal Secure</div>
+  <button class="nav-hamburger" id="nav-hamburger" aria-label="Apri menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- Mobile menu -->
+<div class="nav-mobile-menu" id="nav-mobile">
+  <a href="#s-hero" class="nav-mobile-link">Intro</a>
+  <a href="#s-quote" class="nav-mobile-link">Visione</a>
+  <a href="#s-timeline" class="nav-mobile-link">Timeline</a>
+  <a href="#s-patent" class="nav-mobile-link">Brevetto</a>
+  <a href="#s-legacy" class="nav-mobile-link">Impatto</a>
+  <a href="#s-video" class="nav-mobile-link">Video</a>
+  <div class="nav-mobile-signal"><div class="pulse-dot"></div>Signal Secure</div>
+</div>
+
+<!-- ════ SECTION 1 — PINNED HERO ════ -->
+<section id="s-hero">
+  <div id="s-hero-sticky">
+    <div class="hero-bg" id="hero-bg"></div>
+    <canvas id="wave-canvas"></canvas>
+    <div class="scan-bar"></div>
+
+    <!-- Scene 0 — Title -->
+    <div class="scene active" id="sc0">
+      <div class="scene-overlay"></div>
+      <div style="position:relative;z-index:2;text-align:center;padding:0 2rem;">
+        <span class="hero-eyebrow">Hedy Lamarr · George Antheil · Secret Communication System</span>
+        <h1 class="hero-title">HE-DY</h1>
+        <p class="hero-sub">Dal cinema al frequency hopping: la mente che anticipò il wireless moderno</p>
+        <div class="scroll-cue"><div class="scroll-arrow"></div>Scorri</div>
+      </div>
+    </div>
+
+    <!-- Scene 1 — L'Attrice -->
+    <div class="scene" id="sc1">
+      <div class="scene-overlay"></div>
+      <div class="sc1-content">
+        <div>
+          <span class="scene-chapter">Atto I — Origini e immagine</span>
+          <h2 class="scene-heading">Molto oltre<br>l'icona di <span style="color:var(--gold)">Hollywood</span></h2>
+          <p class="scene-body">Hedwig Eva Maria Kiesler nasce a Vienna nel 1914. Da bambina smonta un carillon per capirne il meccanismo, cresce tra tutor privati, quattro lingue, musica e curiosità tecnica. Hollywood la trasforma in Hedy Lamarr, ma dietro il mito visivo restano intatti il rigore mentale, l'ossessione per i sistemi e la voglia di progettare.</p>
+          <div class="scene-stat">
+            <strong>4</strong>
+            <span>Lingue parlate fluentemente già da giovanissima</span>
+          </div>
+        </div>
+        <div></div>
+      </div>
+    </div>
+
+    <!-- Scene 2 — L'Inventrice -->
+    <div class="scene" id="sc2">
+      <div class="scene-overlay"></div>
+      <div class="blueprint-grid"></div>
+      <div class="sc2-content">
+        <div class="sc2-grid">
+          <div>
+            <span class="scene-chapter">Atto II — Invenzione e guerra</span>
+            <h2 class="scene-heading">Il <span style="color:var(--gold)">salto di frequenza</span><br>prima del digitale</h2>
+            <p class="scene-body">L'obiettivo del brevetto era creare una comunicazione segreta per il controllo remoto di mezzi diretti come i siluri. Trasmettitore e ricevitore non restavano su una frequenza fissa: saltavano insieme tra 88 canali, rendendo molto più difficile intercettare o disturbare il segnale.</p>
+            <div class="patent-box">
+              <div class="patent-num">2,292,387</div>
+              <div class="patent-label">Firma legale: Hedy Kiesler Markey · US Patent</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;opacity:.12;">
+            <svg width="260" height="260" viewBox="0 0 260 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="130" cy="130" r="120" stroke="#d4cbb8" stroke-width="1" stroke-dasharray="6 4"/>
+              <circle cx="130" cy="130" r="80"  stroke="#d4cbb8" stroke-width="1" stroke-dasharray="4 6"/>
+              <circle cx="130" cy="130" r="40"  stroke="#d4cbb8" stroke-width="1"/>
+              <circle cx="130" cy="130" r="5"   fill="#d4cbb8"/>
+              <line x1="130" y1="10"  x2="130" y2="250" stroke="#d4cbb8" stroke-width=".5" stroke-dasharray="3 5"/>
+              <line x1="10"  y1="130" x2="250" y2="130" stroke="#d4cbb8" stroke-width=".5" stroke-dasharray="3 5"/>
+              <path d="M130 50 Q170 90 130 130 Q90 170 130 210" stroke="#d4cbb8" stroke-width="1.5" fill="none"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step indicators -->
+    <div class="hero-steps">
+      <div class="h-step active" id="hs0"></div>
+      <div class="h-step" id="hs1"></div>
+      <div class="h-step" id="hs2"></div>
+    </div>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker-inner">
+    <span>★ Frequency Hopping ★ 88 Frequenze ★ Player Piano Rolls ★ Anti-Jamming ★ George Antheil ★ Hedy Kiesler Markey ★ Siluri Radioguidati ★ Wi‑Fi · Bluetooth · GPS ★ Howard Hughes ★ Ecstasy ★ Hollywood & Invention ★</span>
+    <span>★ Frequency Hopping ★ 88 Frequenze ★ Player Piano Rolls ★ Anti-Jamming ★ George Antheil ★ Hedy Kiesler Markey ★ Siluri Radioguidati ★ Wi‑Fi · Bluetooth · GPS ★ Howard Hughes ★ Ecstasy ★ Hollywood & Invention ★</span>
+  </div>
+</div>
+
+<!-- ════ SECTION 2 — WORD REVEAL QUOTE ════ -->
+<section id="s-quote">
+  <div id="s-quote-sticky">
+    <div class="quote-inner">
+      <span class="quote-eyebrow">L'idea centrale — in scorrimento</span>
+      <div class="quote-rule" id="q-rule"></div>
+      <p class="quote-text" id="quote-text"></p>
+      <span class="quote-attr" id="q-attr">— Frequency hopping, sincronizzazione e segretezza</span>
+    </div>
+  </div>
+</section>
+
+<!-- ════ SECTION 3 — HORIZONTAL TIMELINE ════ -->
+<section id="s-timeline">
+  <div id="s-timeline-sticky">
+    <div class="tl-header">
+      <span class="tl-title">Cinema, guerra, invenzione, eredità</span>
+      <span class="tl-counter" id="tl-counter">01 / 06</span>
+    </div>
+    <div class="tl-cards" id="tl-cards">
+      <div class="tl-card" data-tl="0">
+        <div class="tl-year">1914</div>
+        <div class="tl-card-inner">
+          <div class="tl-dot"></div>
+          <span class="tl-cat">Origini</span>
+          <h3 class="tl-card-title">Nascita a Vienna</h3>
+          <p class="tl-card-body">Nasce a Vienna il 9 novembre 1914. Il padre le spiega il funzionamento di tram e presse da stampa; lei cresce con una curiosità tecnica fortissima e un'istruzione privata iniziata da piccolissima.</p>
+          <span class="tl-tag">Vienna, Austria</span>
+        </div>
+      </div>
+      <div class="tl-card" data-tl="1">
+        <div class="tl-year">1933</div>
+        <div class="tl-card-inner">
+          <div class="tl-dot"></div>
+          <span class="tl-cat">Cinema</span>
+          <h3 class="tl-card-title">Ecstasy — Il Debutto</h3>
+          <p class="tl-card-body">Ecstasy la rende celebre e controversa. Il film viene censurato, il nome di Hedy finisce al centro di scandali politici e culturali, e il matrimonio con Fritz Mandl si trasforma in una prigionia dorata.</p>
+          <span class="tl-tag">Cecoslovacchia, 1933</span>
+        </div>
+      </div>
+      <div class="tl-card" data-tl="2">
+        <div class="tl-year">1937</div>
+        <div class="tl-card-inner">
+          <div class="tl-dot"></div>
+          <span class="tl-cat">Fuga</span>
+          <h3 class="tl-card-title">La Grande Evasione</h3>
+          <p class="tl-card-body">Dopo la fuga dall'Europa arriva a Hollywood e debutta in inglese con Algiers. Diventa un'icona assoluta, ma la sua immagine pubblica finisce per oscurare la sua mente ingegneristica.</p>
+          <span class="tl-tag">Europa → Hollywood</span>
+        </div>
+      </div>
+      <div class="tl-card" data-tl="3">
+        <div class="tl-year">1941</div>
+        <div class="tl-card-inner">
+          <div class="tl-dot" style="background:var(--gold2)"></div>
+          <span class="tl-cat" style="color:var(--gold2)">Invenzione</span>
+          <h3 class="tl-card-title">Patent 2,292,387</h3>
+          <p class="tl-card-body">Con George Antheil sviluppa un sistema di comunicazione segreta anti-jamming. Due rulli perforati sincronizzati fanno saltare il segnale tra 88 frequenze. La Marina lo giudica troppo ingombrante.</p>
+          <span class="tl-tag" style="border-color:rgba(212,203,184,.4);color:var(--gold)">US Patent Office</span>
+        </div>
+      </div>
+      <div class="tl-card" data-tl="4">
+        <div class="tl-year">1997</div>
+        <div class="tl-card-inner">
+          <div class="tl-dot"></div>
+          <span class="tl-cat">Riconoscimento</span>
+          <h3 class="tl-card-title">Pioneer Award — EFF</h3>
+          <p class="tl-card-body">Decenni dopo arriva il riconoscimento: premi, rivalutazione pubblica, icona della cultura tech. Il suo nome diventa simbolo di genialità femminile sottovalutata e di innovazione anticipatrice.</p>
+          <span class="tl-tag">San Francisco, 1997</span>
+        </div>
+      </div>
+      <div class="tl-card" data-tl="5">
+        <div class="tl-year">2000</div>
+        <div class="tl-card-inner">
+          <div class="tl-dot" style="background:rgba(136,136,136,.8)"></div>
+          <span class="tl-cat" style="color:rgba(136,136,136,.8)">Fine del segnale</span>
+          <h3 class="tl-card-title">La Frequenza Cessa</h3>
+          <p class="tl-card-body">Muore nel 2000, ma la sua eredità continua. Il principio del salto di frequenza resta una delle radici storiche della comunicazione wireless moderna.</p>
+          <span class="tl-tag" style="border-color:rgba(136,136,136,.3);color:rgba(136,136,136,.8)">19.01.2000</span>
+        </div>
+      </div>
+    </div>
+    <div class="tl-progress-track"><div class="tl-progress-fill" id="tl-pbar"></div></div>
+  </div>
+</section>
+
+<!-- ════ SECTION 4 — PINNED PATENT REVEAL ════ -->
+<section id="s-patent">
+  <div id="s-patent-sticky">
+    <div class="patent-bg-grid"></div>
+    <div class="patent-inner">
+      <div class="patent-left">
+        <span class="patent-step-eyebrow" id="p-eyebrow">Analisi del sistema…</span>
+        <h2 class="patent-big-title">Secret<br>Comm<span style="color:var(--gold)">unication</span><br>System</h2>
+        <div class="big-patent-num" id="p-bignum">2,292,387</div>
+        <div class="patent-specs" id="p-specs" style="margin-top:2rem;">
+          <div class="p-spec" id="ps0">
+            <span class="p-spec-label">Numero Brevetto</span>
+            <span class="p-spec-val">US 2,292,387</span>
+          </div>
+          <div class="p-spec" id="ps1">
+            <span class="p-spec-label">Scopo</span>
+            <span class="p-spec-val">Controllo remoto segreto di siluri</span>
+          </div>
+          <div class="p-spec" id="ps2">
+            <span class="p-spec-label">Ruolo tecnico</span>
+            <span class="p-spec-val">Antheil traduce l'idea in sincronizzazione meccanica</span>
+          </div>
+          <div class="p-spec" id="ps3">
+            <span class="p-spec-label">Principio</span>
+            <span class="p-spec-val">Salto continuo di frequenza trasmettitore/ricevitore</span>
+          </div>
+          <div class="p-spec" id="ps4">
+            <span class="p-spec-label">Sincronizzazione</span>
+            <span class="p-spec-val">Rulli perforati, pin 100, solenoide 103 e avvio in fase</span>
+          </div>
+          <div class="p-spec" id="ps5">
+            <span class="p-spec-label">Meccanismo</span>
+            <span class="p-spec-val">Sistema elettropneumatico con pompa a vuoto, pistoni e condensatori</span>
+          </div>
+        </div>
+      </div>
+      <div class="patent-right">
+        <div class="freq-label">Simulazione di hopping — canale attivo</div>
+        <canvas id="freq-canvas"></canvas>
+        <div class="freq-note" id="freq-note">— In attesa della sequenza sincronizzata —</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ SECTION 5 — PARALLAX DUALITY ════ -->
+<section id="s-duality">
+  <div class="duality-bg" id="duality-bg"></div>
+  <div class="duality-split"></div>
+  <div class="duality-content">
+    <div class="duality-inner rev">
+      <span class="duality-kicker">Le due vite di Hedy</span>
+      <h2 class="duality-heading">Cinema,<br>ingegno<br>e <span style="color:var(--gold)">pregiudizio</span></h2>
+      <p class="duality-body">Tra una ripresa e l'altra Howard Hughes le mette a disposizione strumenti e supporto tecnico; Hedy osserva uccelli e pesci veloci per ripensare il profilo alare degli aerei. Il rifiuto della Marina dimostra un punto chiave: se l'interfaccia non comunica autorevolezza, un contenuto tecnico denso rischia di essere ignorato.</p>
+      <div class="duality-stats">
+        <div class="d-stat">
+          <strong><span class="cnt" data-target="88">0</span></strong>
+          <span>Frequenze sincronizzate</span>
+        </div>
+        <div class="d-stat">
+          <strong><span class="cnt" data-target="16">0</span></strong>
+          <span>Pianoforti sincronizzati</span>
+        </div>
+        <div class="d-stat">
+          <strong><span class="cnt" data-target="1942">0</span></strong>
+          <span>Anno del rifiuto</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ SECTION 6 — LEGACY COUNTERS ════ -->
+<section id="s-legacy">
+  <div class="legacy-inner">
+    <span class="legacy-eyebrow rev">Impatto tecnico e culturale</span>
+    <h2 class="legacy-title rev rev-d1">Dal brevetto<br>alla percezione</h2>
+    <div class="counters-grid rev rev-d2">
+      <div class="counter-cell">
+        <div class="counter-num"><span class="cnt2" data-target="88">0</span></div>
+        <span class="counter-label">Canali previsti dal rullo standard</span>
+      </div>
+      <div class="counter-cell">
+        <div class="counter-num"><span class="cnt2" data-target="43">0</span></div>
+        <span class="counter-label">Lampada-spia per il feedback operatore</span>
+      </div>
+      <div class="counter-cell">
+        <div class="counter-num"><span class="cnt2" data-target="88">0</span></div>
+        <span class="counter-label">Pin 100 per il blocco iniziale</span>
+      </div>
+      <div class="counter-cell">
+        <div class="counter-num"><span class="cnt2" data-target="103">0</span></div>
+        <span class="counter-label">Solenoide 103 che libera il sistema</span>
+      </div>
+    </div>
+    <div class="tech-grid rev rev-d3">
+      <div class="tech-row">
+        <div class="tech-header"><span class="tech-name">Segretezza del canale</span><span class="tech-pct">98%</span></div>
+        <div class="tech-track"><div class="tech-fill" data-w="98%"></div></div>
+      </div>
+      <div class="tech-row">
+        <div class="tech-header"><span class="tech-name">Resistenza al jamming</span><span class="tech-pct">95%</span></div>
+        <div class="tech-track"><div class="tech-fill" data-w="95%"></div></div>
+      </div>
+      <div class="tech-row">
+        <div class="tech-header"><span class="tech-name">Sincronia trasmettitore/ricevitore</span><span class="tech-pct">82%</span></div>
+        <div class="tech-track"><div class="tech-fill alt" data-w="82%"></div></div>
+      </div>
+      <div class="tech-row">
+        <div class="tech-header"><span class="tech-name">Inganno con segnali esca</span><span class="tech-pct">75%</span></div>
+        <div class="tech-track"><div class="tech-fill alt" data-w="75%"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ SECTION 7 — VIDEO ════ -->
+<section id="s-video">
+  <div class="video-inner rev">
+    <span class="video-eyebrow">Archivio filmato</span>
+    <h2 class="video-title rev rev-d1">Il Documento<br>Visivo</h2>
+    <p class="video-desc rev rev-d2">Immagini e testimonianze di Hedy Lamarr — attrice, inventrice, pioniera della comunicazione sicura. Inserisci qui il tuo video.</p>
+
+    <div class="video-filmstrip rev rev-d2">
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <div class="video-wrap rev rev-d3">
+      <div class="video-frame"></div>
+      <div class="video-scanlines"></div>
+
+      <!-- ─ PLACEHOLDER — sostituisci con il tuo video ─ -->
+      <video controls style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+        <source src="./Hedy Lamarr_ La Mente Dietro il Wi-Fi_720p_caption.mp4" type="video/mp4">
+      </video>
+      <!-- ─────────────────────────────────────────── -->
+
+    </div>
+
+    <div class="video-caption rev rev-d3">
+      <span class="video-caption-left">Hedy Lamarr · 1914 – 2000 · Vienna → Hollywood</span>
+      <span class="video-caption-right"><div class="pulse-dot"></div>Archivio HE-DY</span>
+    </div>
+  </div>
+</section>
+
+<!-- ════ SECTION 8 — QUOTE FINALE ════ -->
+<section id="s-final">
+  <div class="final-divider"></div>
+  <p class="final-quote rev">"La vera lezione di Hedy Lamarr è doppia: il futuro wireless può nascere da un'intuizione radicale, ma senza una presentazione capace di trasmettere credibilità anche le idee più forti rischiano di essere sottovalutate."</p>
+  <span class="final-attr rev rev-d1">— Attrice, inventrice, pioniera della comunicazione sicura</span>
+  <div class="final-divider"></div>
+</section>
+
+<!-- ─ FOOTER ─ -->
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-logo">HE-DY</div>
+      <div class="footer-copy">© HE-DY Archive · Hedy Kiesler Markey · George Antheil · Secret Communication System</div>
+    </div>
+    <div class="footer-links">
+      <a href="#s-hero">Intro</a>
+      <a href="#s-timeline">Timeline</a>
+      <a href="#s-patent">Brevetto</a>
+      <a href="#s-legacy">Impatto</a>
+      <a href="#s-video">Video</a>
+    </div>
+    <div class="footer-signal"><div class="pulse-dot"></div>Sequenza sincronizzata</div>
+  </div>
+</footer>
+
+<script>
+/* ─ Mobile menu ─ */
+const hamburger = document.getElementById('nav-hamburger');
+const mobileMenu = document.getElementById('nav-mobile');
+mobileMenu.style.display = 'flex';
+hamburger.addEventListener('click', () => {
+  const isOpen = mobileMenu.classList.toggle('open');
+  hamburger.classList.toggle('open', isOpen);
+  document.body.style.overflow = isOpen ? 'hidden' : '';
+});
+document.querySelectorAll('.nav-mobile-link').forEach(link => {
+  link.addEventListener('click', () => {
+    mobileMenu.classList.remove('open');
+    hamburger.classList.remove('open');
+    document.body.style.overflow = '';
+  });
+});
+
+/* ─ Cursor (desktop only) ─ */
+const cur = document.getElementById('cur'), curR = document.getElementById('cur-r');
+let mx=0,my=0,rx=0,ry=0;
+if(window.matchMedia('(pointer:fine)').matches){
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+  (function anim(){
+    rx+=(mx-rx)*.14; ry+=(my-ry)*.14;
+    cur.style.left=mx+'px'; cur.style.top=my+'px';
+    curR.style.left=rx+'px'; curR.style.top=ry+'px';
+    requestAnimationFrame(anim);
+  })();
+  document.addEventListener('mouseover',e=>{
+    if(e.target.closest('a,button')) document.body.classList.add('link-hover');
+    else document.body.classList.remove('link-hover');
+  });
+  document.addEventListener('mousedown',()=>cur.style.transform='translate(-50%,-50%) scale(.5)');
+  document.addEventListener('mouseup',()=>cur.style.transform='translate(-50%,-50%) scale(1)');
+}
+
+/* ─ Scroll progress bar ─ */
+const pbar = document.getElementById('progress-bar');
+window.addEventListener('scroll',()=>{
+  const pct = window.scrollY / (document.body.scrollHeight - innerHeight) * 100;
+  pbar.style.width = pct + '%';
+});
+
+/* ─ Nav ─ */
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll',()=>navbar.classList.toggle('scrolled', scrollY>60));
+
+/* ─ Hero wave canvas ─ */
+const wc = document.getElementById('wave-canvas');
+const wctx = wc.getContext('2d');
+function rw(){ wc.width = wc.parentElement.offsetWidth; wc.height = 140; }
+rw(); window.addEventListener('resize', rw);
+let wt=0;
+(function drawW(){
+  wctx.clearRect(0,0,wc.width,wc.height);
+  [[28,.012,.8,.3],[18,.02,1.2,.18],[10,.03,1.7,.08]].forEach(([amp,freq,spd,alpha],i)=>{
+    wctx.beginPath();
+    wctx.strokeStyle=`rgba(212,203,184,${alpha})`;
+    wctx.lineWidth=[2,1.5,1][i];
+    for(let x=0;x<=wc.width;x++){
+      const y=wc.height/2+Math.sin(x*freq+wt*spd)*amp+Math.sin(x*freq*1.7+wt*spd*.6)*(amp*.4);
+      x===0?wctx.moveTo(x,y):wctx.lineTo(x,y);
+    }
+    wctx.stroke();
+  });
+  wt+=.025; requestAnimationFrame(drawW);
+})();
+
+/* ─ SECTION 1: Pinned hero scenes ─ */
+const heroSect = document.getElementById('s-hero');
+const scenes   = [document.getElementById('sc0'),document.getElementById('sc1'),document.getElementById('sc2')];
+const steps    = [document.getElementById('hs0'),document.getElementById('hs1'),document.getElementById('hs2')];
+const heroBg   = document.getElementById('hero-bg');
+function updateHero(){
+  const rect = heroSect.getBoundingClientRect();
+  const total= heroSect.offsetHeight - innerHeight;
+  const prog = Math.max(0, Math.min(1, -rect.top / total));
+  heroBg.style.transform = `translateY(${prog * 60}px)`;
+  let active = prog < .33 ? 0 : prog < .66 ? 1 : 2;
+  scenes.forEach((s,i)=>s.classList.toggle('active', i===active));
+  steps.forEach((s,i)=>s.classList.toggle('active', i===active));
+  if(active===2) heroBg.classList.add('color'); else heroBg.classList.remove('color');
+}
+window.addEventListener('scroll', updateHero, {passive:true});
+updateHero();
+
+/* ─ SECTION 2: Word-by-word quote reveal ─ */
+const quoteStr = "Il segnale non resta fermo su una sola frequenza. Salta di continuo tra canali diversi, seguendo una sequenza condivisa soltanto da trasmettitore e ricevitore. Senza quella sequenza, il nemico non sa dove ascoltare, dove disturbare e dove inseguire il comando.";
+const qt = document.getElementById('quote-text');
+const qWords = quoteStr.split(' ');
+qt.innerHTML = qWords.map(w=>`<span class="q-word">${w}</span> `).join('');
+const wordEls = qt.querySelectorAll('.q-word');
+const qSect   = document.getElementById('s-quote');
+const qAttr   = document.getElementById('q-attr');
+const qRule   = document.getElementById('q-rule');
+function updateQuote(){
+  const rect  = qSect.getBoundingClientRect();
+  const total = qSect.offsetHeight - innerHeight;
+  const prog  = Math.max(0, Math.min(1, -rect.top / total));
+  if(prog > .05) qRule.classList.add('grow');
+  const lit = Math.floor(prog * wordEls.length * 1.2);
+  wordEls.forEach((w,i)=>{
+    w.classList.toggle('lit',    i < lit);
+    w.classList.toggle('active', i === lit - 1);
+  });
+  if(prog > .85) qAttr.classList.add('show'); else qAttr.classList.remove('show');
+}
+window.addEventListener('scroll', updateQuote, {passive:true});
+
+/* ─ SECTION 3: Horizontal timeline (desktop) / vertical (mobile) ─ */
+const isMobile = () => window.innerWidth <= 768;
+const tlSect   = document.getElementById('s-timeline');
+const tlCards  = document.getElementById('tl-cards');
+const tlPbar   = document.getElementById('tl-pbar');
+const tlCards_ = tlCards.querySelectorAll('.tl-card');
+const tlCounter= document.getElementById('tl-counter');
+function updateTimeline(){
+  if(isMobile()) return;
+  const rect  = tlSect.getBoundingClientRect();
+  const total = tlSect.offsetHeight - innerHeight;
+  const prog  = Math.max(0, Math.min(1, -rect.top / total));
+  const maxMove = tlCards.scrollWidth - innerWidth + 96;
+  tlCards.style.transform = `translateX(${-prog * maxMove}px)`;
+  tlPbar.style.width = (prog * 100) + '%';
+  const visibleIdx = Math.min(5, Math.floor(prog * 7));
+  tlCards_.forEach((c,i)=>c.classList.toggle('visible', i <= visibleIdx));
+  tlCounter.textContent = String(Math.min(6, visibleIdx + 1)).padStart(2,'0') + ' / 06';
+}
+window.addEventListener('scroll', updateTimeline, {passive:true});
+// Initialise mobile cards as visible
+if(isMobile()) tlCards_.forEach(c=>c.classList.add('visible'));
+window.addEventListener('resize', ()=>{
+  if(isMobile()){
+    tlCards.style.transform = '';
+    tlCards_.forEach(c=>c.classList.add('visible'));
+  }
+});
+
+/* ─ SECTION 4: Patent specs reveal ─ */
+const patSect  = document.getElementById('s-patent');
+const specEls  = [0,1,2,3,4,5].map(i=>document.getElementById('ps'+i));
+const pBigNum  = document.getElementById('p-bignum');
+const pEyebrow = document.getElementById('p-eyebrow');
+const freqNote = document.getElementById('freq-note');
+const fc = document.getElementById('freq-canvas');
+const fctx = fc.getContext('2d');
+function rfc(){ fc.width = fc.offsetWidth; fc.height = 120; }
+rfc(); window.addEventListener('resize', rfc);
+let fTick=0, activeCh=0, fRunning=false;
+function drawFreq(){
+  fctx.clearRect(0,0,fc.width,fc.height);
+  const bw = fc.width / 88;
+  if(fRunning && fTick%16===0) activeCh=Math.floor(Math.random()*88);
+  for(let i=0;i<88;i++){
+    const isA = i===activeCh && fRunning;
+    const h   = isA ? 40+Math.random()*70 : 2+Math.random()*3;
+    fctx.fillStyle = isA ? 'rgba(212,203,184,.9)' : 'rgba(212,203,184,.1)';
+    fctx.fillRect(i*bw+.5, fc.height-h, bw-1, h);
+  }
+  fTick++; requestAnimationFrame(drawFreq);
+}
+drawFreq();
+function updatePatent(){
+  const rect  = patSect.getBoundingClientRect();
+  const total = patSect.offsetHeight - innerHeight;
+  const prog  = Math.max(0, Math.min(1, -rect.top / total));
+  if(prog < .05){
+    pEyebrow.textContent='Analisi del sistema…';
+    pBigNum.classList.remove('show');
+    specEls.forEach(s=>s.classList.remove('show'));
+    fRunning=false; freqNote.textContent='— In attesa di trasmissione —';
+  } else {
+    pBigNum.classList.add('show');
+    pEyebrow.textContent='Meccanica, sincronizzazione e anti-jamming';
+    const specStep = Math.floor((prog - .05) / .95 * 9);
+    specEls.forEach((s,i)=>{ if(i < specStep) s.classList.add('show'); });
+    if(prog > .6){ fRunning=true; freqNote.textContent='Trasmissione attiva — salto di frequenza in corso'; }
+    else { fRunning=false; freqNote.textContent='— In attesa —'; }
+  }
+}
+window.addEventListener('scroll', updatePatent, {passive:true});
+
+/* ─ SECTION 5: Duality parallax ─ */
+const dualBg   = document.getElementById('duality-bg');
+const dualSect = document.getElementById('s-duality');
+function updateDuality(){
+  const rect = dualSect.getBoundingClientRect();
+  const prog = Math.max(0, Math.min(1, 1 - rect.top / innerHeight));
+  dualBg.style.transform = `translateY(${(prog - .5) * 60}px) scale(1.15)`;
+}
+window.addEventListener('scroll', updateDuality, {passive:true});
+
+/* ─ Generic .rev reveal ─ */
+const revObs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); revObs.unobserve(e.target); } });
+},{threshold:.1});
+document.querySelectorAll('.rev').forEach(el=>revObs.observe(el));
+
+/* ─ Counters ─ */
+function animCount(el, dur=1600){
+  const target = +el.dataset.target;
+  const start = performance.now();
+  (function step(now){
+    const t = Math.min(1, (now-start)/dur);
+    const ease = t<.5 ? 2*t*t : -1+(4-2*t)*t;
+    el.textContent = Math.round(ease*target);
+    if(t<1) requestAnimationFrame(step);
+  })(start);
+}
+const cntObs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.querySelectorAll('.cnt,.cnt2').forEach(c=>animCount(c));
+      cntObs.unobserve(e.target);
+    }
+  });
+},{threshold:.3});
+document.querySelectorAll('#s-duality, #s-legacy').forEach(s=>cntObs.observe(s));
+
+/* ─ Tech bars ─ */
+const barObs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.querySelectorAll('.tech-fill').forEach((b,i)=>{
+        setTimeout(()=>b.style.width=b.dataset.w, i*180);
+      });
+      barObs.unobserve(e.target);
+    }
+  });
+},{threshold:.3});
+document.querySelectorAll('.tech-grid').forEach(g=>barObs.observe(g));
+</script>
+</body>
+</html>
